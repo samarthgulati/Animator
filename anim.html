@@ -2,27 +2,32 @@
 <html>
 
 <head>
-    <title></title>
+    <title>Logo</title>
 </head>
 
 <body>
     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid" style="width:100%; height:100%;">
-        <circle class="gridC" id="gridCio" r="52" fill="none" stroke="#9e9e9e"></circle>
-        <circle class="gridC" id="gridCii" r="40" fill="none" stroke="#9e9e9e"></circle>
-        <circle class="gridC" id="gridCoo" r="80" fill="none" stroke="#9e9e9e"></circle>
-        <circle class="gridC" id="gridCoi" r="68" fill="none" stroke="#9e9e9e"></circle>
-        <rect class="gridR" id="gridRhr" x="-80" y="-6" width="160" height="12" fill="none" stroke="#9e9e9e"></rect>
-        <rect class="gridR" id="gridRangle" x="-84" y="-3" width="168" height="6" fill="none" stroke="#9e9e9e" transform="rotate(-30)"></rect>
+        <circle class="grid gridC" id="gridCio" r="52" fill="none" stroke="#9e9e9e"></circle>
+        <circle class="grid gridC" id="gridCii" r="40" fill="none" stroke="#9e9e9e"></circle>
+        <circle class="grid gridC" id="gridCoo" r="80" fill="none" stroke="#9e9e9e"></circle>
+        <circle class="grid gridC" id="gridCoi" r="68" fill="none" stroke="#9e9e9e"></circle>
+        <rect class="grid gridR" id="gridRhr" x="-80" y="-6" width="160" height="12" fill="none" stroke="#9e9e9e"></rect>
+        <rect class="grid gridR" id="gridRangle" x="-84" y="-3" width="168" height="6" fill="none" stroke="#9e9e9e" transform="rotate(-30)"></rect>
 
 
         <path id="gArc"  d="M 52 0 A 52 52 0 1 0 45.03 26 L 34.64 20 A 40 40 0 1 1 40 0 Z" fill="#00bfa5" stroke="none" transform="rotate(-30)"></path>
-        <path id="sArcT" d="M 80 0 A 80 80 0 0 0 -69.28 -40 L -58.89 -34 A 68 68 0 0 1 68 0 Z" fill="#00bfa5" stroke="none" transform="scale(-1,1)"></path>
-        <path id="sArcB" d="M 80 0 A 80 80 0 0 0 -69.28 -40 L -58.89 -34 A 68 68 0 0 1 68 0 Z" fill="#00bfa5" stroke="none" transform="scale(1,-1)"></path>
+        <path class="sArc" id="sArcT" d="M 80 0 A 80 80 0 0 0 -69.28 -40 L -58.89 -34 A 68 68 0 0 1 68 0 Z" fill="#00bfa5" stroke="none" transform="scale(-1,1)"></path>
+        <path class="sArc" id="sArcB" d="M 80 0 A 80 80 0 0 0 -69.28 -40 L -58.89 -34 A 68 68 0 0 1 68 0 Z" fill="#00bfa5" stroke="none" transform="scale(1,-1)"></path>
         <rect id="sStem" x="40" y="-6" width="40" height="12" fill="#00bfa5" transform="scale(-1,1)"></rect>
         <rect id="gStem" x="20" y="-6" width="60" height="12" fill="#00bfa5"></rect>
-        <rect id="sSerifB" x="64" y="-3" width="20" height="6" fill="#00bfa5" transform="rotate(-30, 0, 0) scale(-1,1)"></rect>
-        <rect id="sSerifT" x="-84" y="-3" width="20" height="6" fill="#00bfa5" transform="rotate(-30, 0, 0) scale(-1,1)"></rect>
-        <rect id="gSerif" x="-56" y="-3" width="20" height="6" fill="#00bfa5" transform="rotate(-30, 0, 0) scale(-1,1)"></rect>
+        
+        <rect class="serif" id="sSerifT" x="-84" y="-3" width="20" height="6" fill="#00bfa5" transform="rotate(-30, 0, 0) scale(-1,1)"></rect>
+        
+        <rect class="serif" id="gSerif" x="-56" y="-3" width="20" height="6" fill="#00bfa5" transform="rotate(-30, 0, 0) scale(-1,1)"></rect>
+        <rect class="serif" id="sSerifB" x="64" y="-3" width="20" height="6" fill="#00bfa5" transform="rotate(-30, 0, 0) scale(-1,1)"></rect>
+        
+        
+        
     </svg>
     <script src="animator.js"></script>
 </body>

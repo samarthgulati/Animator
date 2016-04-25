@@ -1,3 +1,5 @@
+'use strict'
+
 class DrawArc {
     constructor() {
         this.of = null; // outer Arc focus
@@ -57,7 +59,7 @@ class Animator {
 
         this.animReq = null;
         this.idx = null;
-        //this.drawArc = new DrawArc();
+        this.playing = false;
 
         this.tstart = null;
         this.time = null;
@@ -68,10 +70,18 @@ class Animator {
         this.el = null;
 
         this.currentVal = null;
+        /*
+         *
+         * TERMS OF USE - EASING EQUATIONS
+         * 
+         * Open source under the BSD License. 
+         * 
+         * Copyright Â© 2001 Robert Penner
+         * All rights reserved.
+         */
         this.easings = {
             linear: function(x, t, b, c, d) {
                 return (c - b) * x;
-                //return c * (t /= d) * t + b;
             },
             easeInQuad: function(x, t, b, c, d) {
                 return c * (t /= d) * t + b;
@@ -218,36 +228,64 @@ class Animator {
         };
     }
 
-    setElemAttr(el, attr, val) {
-        if (attr.includes('transform')) {
-            attr = attr.split(':');
-            let prop = attr[1];
-            let opt = attr[2] ? attr[2] : null;
-            attr = attr[0];
-            switch (prop) {
-                case 'scale':
-                    val = `${prop}( ${val} ${val} )`;
-                    break;
-                case 'rotate':
-                    if(opt && opt === 'anti') {
-                       val = `${prop}( ${360-val} )`; 
-                    } else {
-                        val = `${prop}( ${val} )`;    
-                    }
-                    
-                    break;
-                default:
-                    val = `${prop}( ${val})`;
-                    break;
-            }
-        } else if (attr === 'd') {
-            console.log(val);
+    setValue(attr) {
+        let val = null;
+        switch (attr.state) {
+            
+            case 'init':
+                val = attr.vt0;
+                break;
 
-        } else {
+            case 'update':
+                let easing = this.easings[attr.timingFn](attr.x, attr.t, 0, Math.abs(attr.vts - attr.vtf), this.props[this.idx].duration);
+                if (attr.vts < attr.vtf) {
+                    val = attr.vts + easing;
+                } else {
+                    val = attr.vts - easing;
+                }
+                break;
 
+            case 'stop':
+                val = attr.vtf;
+                break;
         }
 
-        el.setAttribute(attr, val);
+        if (attr.fn && typeof attr.fn === 'object') {
+            let args = attr.fn.args.concat(parseFloat(val.toFixed(2)));
+            val = attr.fn.var.apply(attr.fn.context, args);
+        }
+
+        return val;
+    }
+
+    setElemAttr(el, attr) {
+
+        let val = this.setValue(attr);
+        let prop = attr.name;
+
+        if (attr.name.includes('transform')) {
+            prop = prop.split(':');
+            let name = prop[1];
+            let opt = prop[2] ? prop[2] : null;
+            prop = prop[0];
+            switch (name) {
+                case 'scale':
+                    val = `${name}( ${val} ${val} )`;
+                    break;
+                case 'rotate':
+                    if (opt && opt === 'anti') {
+                        val = `${name}( ${360-val} )`;
+                    } else {
+                        val = `${name}( ${val} )`;
+                    }
+                    break;
+                default:
+                    val = `${name}( ${val})`;
+                    break;
+            }
+        }
+
+        el.setAttribute(prop, val);
         return;
 
     }
@@ -257,13 +295,12 @@ class Animator {
             let elem = document.querySelectorAll(prop.el);
             for (let i = 0; i < elem.length; i++) {
                 prop.attrs.forEach((attr) => {
-                    //elem[i].setAttribute(attr.name, attr.vt0);
-                    this.setElemAttr(elem[i], attr.name, attr.vt0);
+                    attr.state = 'init';
+                    this.setElemAttr(elem[i], attr);
                 });
             }
         });
         this.idx = 0;
-
         return;
     }
 
@@ -272,9 +309,10 @@ class Animator {
         this.el = document.querySelectorAll(this.props[idx].el);
         this.tfinal = this.tstart + this.props[idx].duration + (this.el.length - 1) * this.props[idx].delay;
         /*for (let i = 0; i < this.el.length; i++) {
-            for(let attr of this.props[idx].attrs) {
-                this.el[i].setAttribute(attr.name, attr.vts);
-            }
+            this.props[idx].attrs.forEach((attr) => {
+                attr.state = 'start';
+                this.setElemAttr(this.el[i], attr);
+            });
         }*/
         this.update(idx);
     }
@@ -293,18 +331,10 @@ class Animator {
 
                 if ((x >= 0) && (x <= 1)) {
                     for (let attr of this.props[idx].attrs) {
-                        let value = null;
-                        if(typeof attr.fn === 'string') {
-                            value = attr.vts + this.easings[attr.fn](x, t, 0, Math.abs(attr.vts - attr.vtf), this.props[idx].duration);    
-                        } else if (typeof attr.fn === 'object') {
-                            value = attr.vts + this.easings[attr.fn.timingFn](x, t, 0, Math.abs(attr.vts - attr.vtf), this.props[idx].duration);
-                            let args = attr.fn.args.concat(parseFloat(value.toFixed(2)));
-                            value = attr.fn.var.apply(attr.fn.context, args);
-                            console.log(value);
-                        }
-                        
-                        this.setElemAttr(this.el[i], attr.name, value, attr.fn);
-                        //this.setElemAttr(this.el[i], attr);
+                        attr.state = 'update';
+                        attr.x = x;
+                        attr.t = t;
+                        this.setElemAttr(this.el[i], attr);
                     }
                 }
             }
@@ -318,27 +348,29 @@ class Animator {
     stop(idx) {
         for (let i = 0; i < this.el.length; i++) {
             this.props[idx].attrs.forEach((attr) => {
-                // this.el[i].setAttribute(attr.name, attr.vtf);
-                this.setElemAttr(this.el[i], attr.name, attr.vtf);
+                attr.state = 'stop';
+                this.setElemAttr(this.el[i], attr);
             });
         }
         if (this.idx < this.props.length - 1) {
             this.idx++;
-            //console.log(this.idx);
             this.tstart = this.tfinal;
             this.start(this.idx);
         } else {
             console.log('done');
+            this.playing = false;
         }
     }
 
     play() {
-        this.init();
-        let date = new Date();
-        this.time = this.tstart = date.getTime();
-        this.start(this.idx);
+        if (!this.playing) {
+            this.init();
+            this.playing = true;
+            let date = new Date();
+            this.time = this.tstart = date.getTime();
+            this.start(this.idx);
+        }
     }
-
 }
 
 let drawArc = new DrawArc();
@@ -350,13 +382,13 @@ let animProp = [{
         vt0: 0,
         vts: 0,
         vtf: 1,
-        fn: 'easeInOutCubic'
+        timingFn: 'easeInOutCubic'
     }, {
         name: 'opacity',
         vt0: 0,
         vts: 0,
         vtf: 1,
-        fn: 'easeInOutCubic'
+        timingFn: 'easeInOutCubic'
     }],
     duration: 1000,
     delay: 100
@@ -367,15 +399,15 @@ let animProp = [{
         vt0: 0,
         vts: 0,
         vtf: 1,
-        fn: 'easeInOutCubic'
+        timingFn: 'easeInOutCubic'
     }, {
         name: 'opacity',
         vt0: 0,
         vts: 0,
         vtf: 1,
-        fn: 'easeInOutCubic'
+        timingFn: 'easeInOutCubic'
     }],
-    duration: 1000,
+    duration: 600,
     delay: 100
 }, {
     el: '#gridRangle',
@@ -384,16 +416,10 @@ let animProp = [{
         vt0: 0,
         vts: 0,
         vtf: 30,
-        fn: 'easeInQuad'
-    }, {
-        name: 'opacity',
-        vt0: 0,
-        vts: 0,
-        vtf: 1,
-        fn: 'linear'
+        timingFn: 'easeOutExpo'
     }],
-    duration: 1000,
-    delay: 100
+    duration: 200,
+    delay: 0
 }, {
     el: '#gArc',
     attrs: [{
@@ -401,133 +427,98 @@ let animProp = [{
         vt0: 0,
         vts: 0,
         vtf: 330,
-        fn: {'var':drawArc.interpolateArc,
-              'args': [0,0,40,52],
-              'context': drawArc,
-              'timingFn':'easeInQuad'}
+        fn: {
+            'var': drawArc.interpolateArc,
+            'args': [0, 0, 40, 52],
+            'context': drawArc,
+        },
+        'timingFn': 'easeInOutCubic'
     }],
-    duration: 1000,
-    delay: 100
-}/*, {
+    duration: 900,
+    delay: 0
+}, {
     el: '#gStem',
     attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
+        name: 'width',
         vt0: 0,
         vts: 0,
-        vtf: 1,
-        fn: 'linear'
+        vtf: 60,
+        timingFn: 'easeOutExpo'
     }],
-    duration: 1000,
-    delay: 100
-}, {
-    el: '#sArcT',
-    attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
-        vt0: 0,
-        vts: 0,
-        vtf: 1,
-        fn: 'linear'
-    }],
-    duration: 1000,
-    delay: 100
-}, {
-    el: '#sArcB',
-    attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
-        vt0: 0,
-        vts: 0,
-        vtf: 1,
-        fn: 'linear'
-    }],
-    duration: 1000,
-    delay: 100
+    duration: 200,
+    delay: 0
 }, {
     el: '#sStem',
     attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
+        name: 'width',
         vt0: 0,
         vts: 0,
-        vtf: 1,
-        fn: 'linear'
+        vtf: 40,
+        timingFn: 'easeOutExpo'
     }],
-    duration: 1000,
-    delay: 100
+    duration: 200,
+    delay: 0
 }, {
-    el: '#sSerifB',
+    el: '.sArc',
     attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
+        name: 'd',
         vt0: 0,
         vts: 0,
-        vtf: 1,
-        fn: 'linear'
+        vtf: 150,
+        fn: {
+            'var': drawArc.interpolateArc,
+            'args': [0, 0, 80, 68],
+            'context': drawArc,
+        },
+        'timingFn': 'easeOutQuart'
     }],
-    duration: 1000,
+    duration: 900,
     delay: 100
 }, {
     el: '#sSerifT',
     attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
+        name: 'width',
         vt0: 0,
         vts: 0,
-        vtf: 1,
-        fn: 'linear'
+        vtf: 20,
+        timingFn: 'easeOutQuart'
     }],
-    duration: 1000,
-    delay: 100
+    duration: 150,
+    delay: 0
 }, {
     el: '#gSerif',
     attrs: [{
-        name: 'transform:rotate',
-        vt0: 0,
-        vts: 330,
-        vtf: 0,
-        fn: 'linear'
-    }, {
-        name: 'opacity',
+        name: 'width',
         vt0: 0,
         vts: 0,
-        vtf: 1,
-        fn: 'linear'
+        vtf: 20,
+        timingFn: 'easeOutQuart'
+    }],
+    duration: 100,
+    delay: 0
+}, {
+    el: '#sSerifB',
+    attrs: [{
+        name: 'width',
+        vt0: 0,
+        vts: 0,
+        vtf: 20,
+        timingFn: 'easeOutQuart'
+    }],
+    duration: 50,
+    delay: 0
+}, {
+    el: '.grid',
+    attrs: [{
+        name: 'opacity',
+        vt0: 0,
+        vts: 1,
+        vtf: 0,
+        timingFn: 'easeInOutQuart'
     }],
     duration: 1000,
-    delay: 100
-}*/];
+    delay: 0
+}];
 
 let anim = new Animator(animProp);
-document.addEventListener('click', ()=>{anim.play();});
+document.addEventListener('click', () => { anim.play(); });
